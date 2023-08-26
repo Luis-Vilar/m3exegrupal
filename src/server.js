@@ -1,25 +1,26 @@
 // dependencias
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan");
-const {config} = require("dotenv");
-config();
+const path = require("path");
 
 // classe server
 class Server {
   // constructor de classe
   constructor(app = express()) {
-    this.routes(app);
     this.middlewares(app);
-    this.database();
+    this.routes(app);
+    // this.database();
     this.initializeServer(app);
   }
   // middlewares
-  async middlewares(app) { 
+  async middlewares(app) {
     app.use(cors());
     app.use(express.json());
-    app.use(morgan("dev"))
+    app.use(express.static(path.join(__dirname, 'public')));
+
   }
+
+
   // connect database
   async database() {
     const connection = require("./database/connection");
@@ -34,15 +35,27 @@ class Server {
   async routes(app) {
     const appRoutes = require("./routes");
     app.use(appRoutes);
-  
-  }
-  // start server
-  async initializeServer(app) {
-    const PORT = process.env.PORT_NODE || 3000;
-    const HOST = process.env.HOST_NODE || "localhost";
-    app.listen(PORT, () => console.log(`Servidor executando http://${HOST}:${PORT}`));
   }
 
+  // start server
+  async initializeServer(app) {
+    const http = require('http').Server(app);
+    const io = require('socket.io')(http);
+    const port = process.env.PORT || 3000;
+
+
+    io.on('connection', (socket) => {
+      socket.on('chat message', msg => {
+        io.emit('chat message', msg);
+      });
+    });
+
+
+    http.listen(port, () => {
+      console.log(`Socket.IO server running at http://localhost:${port}/`);
+    });
+
+  }
 }
 
 module.exports = { Server };
